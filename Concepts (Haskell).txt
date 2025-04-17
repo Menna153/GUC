@@ -1,0 +1,51 @@
+type Position = (Int,Int)
+data Color = W | B deriving (Eq, Show)
+data Peg = Peg Position Color deriving (Eq, Show)
+data Move = M Position deriving (Eq, Show)
+type Board = [Peg]
+data State = S Move Board deriving (Eq, Show)
+createBoard:: Position -> Board
+isValidMove:: Move -> Board -> Bool
+isGoal:: Board -> Bool
+showPossibleNextStates:: Board -> [State]
+
+createBoard (x,y) 
+			| x<(-3) || x>3 || (y==2 || y==3 || y==(-2) || y==(-3))&&(x<(-1) || x>1) = error "The position is not valid." 
+			| otherwise = incompleteCol (-3,-1) (x,y) ++ completeCol(-1,-3) (x,y) ++ incompleteCol (2,-1) (x,y)
+
+incompleteCol (-1,-1) (_,_) = []
+incompleteCol (4,-1) (_,_) = []
+incompleteCol (xB,yB) (xW,yW) 
+			| xB == xW && yB == yW = if yB == 1 then (Peg (xW,yW) W):(incompleteCol (xB+1,-1) (xW,yW)) else (Peg (xW,yW) W):(incompleteCol (xB,yB+1) (xW,yW))
+			| yB == 1 = (Peg (xB,yB) B):incompleteCol (xB+1,-1) (xW,yW)
+			| otherwise = (Peg (xB,yB) B):incompleteCol (xB,yB+1) (xW,yW)		
+
+completeCol (2,-3) (_,_) = []
+completeCol (xB,yB) (xW,yW) 
+			| xB == xW && yB == yW = if yB == 3 then (Peg (xW,yW) W):completeCol (xB+1,-3) (xW,yW) else (Peg (xW,yW) W):(completeCol (xB,yB+1) (xW,yW))
+			| yB == 3 = (Peg (xB,yB) B):completeCol (xB+1,-3) (xW,yW)
+			| otherwise = (Peg (xB,yB) B):completeCol (xB,yB+1) (xW,yW)
+			
+isValidMove (M (x,y)) (h:t) = searchWhite (x,y) (h:t)
+
+searchWhite (_,_) [] = False
+searchWhite (x,y) ((Peg (xW,yW) color):t) 
+			| color == W = (checkValidity (xW,yW) (x,y)) || (searchWhite (x,y) t) 
+			| otherwise = searchWhite (x,y) t 
+			
+checkValidity (xW,yW) (x,y) = if (xW+1 == x && yW == y) || (xW-1 == x && yW == y) || (xW == x && yW+1 == y) || (xW == x && yW-1 == y) then True else False
+
+isGoal [] = True
+isGoal ((Peg (xW,yW) color):t) = if color == W then isGoal t else False
+
+showPossibleNextStates board 
+			| isGoal board == True = error "No Possible States Exist." 
+			| otherwise = showAll board board
+
+showAll board [] = []
+showAll board ((Peg (x,y) color):t) 
+			| color == B && (isValidMove (M (x,y)) board) = (S (M (x,y)) (updateBoard board (x,y))):(showAll board t)
+			| otherwise = showAll board t
+
+updateBoard [] (_,_) = []			
+updateBoard ((Peg (x1,y1) color):t) (x,y) = if x1 == x && y1 == y then (Peg (x1,y1) W):t else (Peg (x1,y1) color):(updateBoard t (x,y))
